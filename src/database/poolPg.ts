@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 
 const pool = new Pool({
   user: 'postgres',
-  database: 'dbapi',
+  database: 'postgres',
   max: 5,
   host: 'localhost',
   port: 5432,

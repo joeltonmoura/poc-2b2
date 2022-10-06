@@ -8,9 +8,8 @@ type queryTypes = {
 
 type InsertBd = {
   table: string;
-  parametros: Array<Object>;
+  parametros: Array<{ [key: string]: any }>;
 };
-
 type DeleteBd = {
   table: string;
   parametros: { where: object };
@@ -22,7 +21,7 @@ type UpdateBd = {
 };
 
 class ConnectDb {
-  private async executarTranscao(instrucao: string, parametros: any) {
+  private static async executarTranscao(instrucao: string, parametros: any) {
     const cliente = await pool.connect();
     try {
       await cliente.query('BEGIN');
@@ -35,6 +34,7 @@ class ConnectDb {
       cliente.release();
     }
   }
+
   public static async simplesQueryBd({
     instrucao,
     parametros,
@@ -46,18 +46,36 @@ class ConnectDb {
     //Liebra o cliente do pool para uma nova conexão
     clinte.release(true);
     const duration = Date.now() - start;
-    console.log('Query executada', { instrucao, duration, rows: res.rowCount });
+    //console.log('Query executada', { instrucao, duration, rows: res.rowCount });
 
     return res;
   }
 
   public static async insertBd({ table, parametros }: InsertBd) {
+    console.time();
+    const parm: Array<any> = [];
+    const valores: Array<string> = [];
     const chaves = Object.keys(parametros[0]);
     const colunas = chaves.join(',');
-    const valores = chaves.map((_, i) => `$${i + 1}`).join(',');
-    const query = `insert into ${table} (${colunas}) values (${valores});`;
+    let numerocoluna = 1;
+    let auxiliar: any = [];
+    parametros.map((v, i) => {
+      auxiliar = [];
+      chaves.forEach((e, i) => {
+        parm.push(v[e]);
+        auxiliar.push(`$${numerocoluna}`);
+        numerocoluna++;
+      });
 
+      valores.push(`(${auxiliar.join(',')})`);
+    });
+
+    const query = `insert into ${table} (${colunas}) values ${valores.join(',')}`;
     console.log(query);
+
+    await this.executarTranscao(query, parm);
+    console.log(parametros.length);
+    console.timeEnd();
   }
 
   public static async deleteBd({ table, parametros }: DeleteBd) {
@@ -65,7 +83,7 @@ class ConnectDb {
     const valores = chaves.map((c, i) => `${c} = $${i + 1}`).join(' and ');
     const query = `delete from ${table} where ${valores};`;
 
-    console.log(query);
+    //console.log(query);
   }
 
   public static async updateBd({ table, parametros }: UpdateBd) {
@@ -75,7 +93,7 @@ class ConnectDb {
     const valoresWhere = chavesWhere.map((c, i) => `${c} = $${i + 1}`).join(' and ');
 
     const query = `update ${table} set ${valoresSet} where ${valoresWhere};`;
-    console.log(query);
+    //console.log(query);
   }
 }
 
